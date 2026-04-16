@@ -11,16 +11,20 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('../frontend'))
 
-// Database Connection
-mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log('MongoDB connected successfully'))
-.catch(err => console.error('MongoDB connection error:', err));
+// ── Cached DB connection for Vercel serverless ──
+let isConnected = false;
+async function connectDB() {
+    if (isConnected) return;
+    await mongoose.connect(process.env.MONGO_URI);
+    isConnected = true;
+    console.log('MongoDB connected successfully');
+}
 
 // Routes
 app.get('/api/projects', async (req, res) => {
     try {
+        await connectDB();
         const projects = await Project.find();
         res.json(projects);
     } catch (err) {
@@ -30,6 +34,7 @@ app.get('/api/projects', async (req, res) => {
 
 app.post('/api/contact', async (req, res) => {
     try {
+        await connectDB();
         const { name, email, message } = req.body;
         const newContact = new Contact({ name, email, message });
         await newContact.save();
